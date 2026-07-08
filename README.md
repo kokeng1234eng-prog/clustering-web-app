@@ -80,5 +80,5 @@ This project segments global cities into lifestyle archetypes using unsupervised
 
 ### 1. Clone or download this repository
 ```bash
-git clone [YOUR_REPO_URL]
+git clone [https://github.com/kokeng1234eng-prog/clustering-web-app]
 cd [NaKuanRen_BIT_B2201F-2505003_clustering_app]
