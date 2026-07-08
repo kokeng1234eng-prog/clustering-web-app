@@ -45,16 +45,15 @@ This project segments global cities into lifestyle archetypes using unsupervised
 
 ## 🏷️ Cluster Interpretation
 
-| Cluster ID | Name | Description |
-| :--- | :--- | :--- |
-| -1 | ❌ Noise / Outliers | 14 cities with conflicting features – high density but very low income, poor air quality (86.6), low happiness (5.6). Don't fit any clean archetype. |
-| 0 | 🌿 Eco-Haven Cities | The greenest and happiest cities! Lowest air pollution (38.8), highest green space (37.7%), highest happiness (8.40), low density (1,163/km²). Residents enjoy clean, spacious living. |
-| 1 | 💰 Wealthy Digital Hubs | The economic powerhouses – highest income ($4,176), highest rent ($1,479), and highest internet penetration (88.5%). High happiness (8.14) and moderate density (2,460/km²). |
-| 2 | 📉 Developing Urban Centers | Low income ($1,822), low rent ($644), low happiness (5.60), poor air quality (76.0). Moderate density (4,037/km²) suggests crowded but under-resourced cities. |
-| 3 | 🏙️ Balanced Metropolises | The "middle ground" – good income ($3,436), high happiness (7.91), high internet (83.2%), moderate density (3,048/km²). Well-rounded urban lifestyle. |
-| 4 | 📉 Struggling Cities | The lowest of everything – lowest income ($882), lowest happiness (4.08), lowest internet (44.8%), lowest green space (~18%), poorest air quality (83.7). Cities facing significant challenges. |
-| 5 | 🏭 Industrial Mega-Cities | Very high density (7,451/km²) with the worst air quality (94.1), low income ($2,510), and low happiness (5.69). Likely heavily industrialized urban centers. |
----
+| Cluster ID | Name | Description | Key Stats (Avg) |
+| :--- | :--- | :--- | :--- |
+| 0 | 🌿 **Affluent Eco-Havens** | High-income, high internet, clean air, high happiness, abundant green space. Low population density. | Income: $3,752<br>Happiness: 8.4<br>Air Quality: 38.8<br>Green Space: 37.7% |
+| 1 | 🏡 **High-Income Suburban** | Very high income and internet, moderate density, good happiness and green space. Slightly less clean air than Cluster 0. | Income: $4,176<br>Happiness: 8.1<br>Air Quality: 60.9<br>Green Space: 39.0% |
+| 2 | 🏙️ **Mid-Income Dense Urban** | Moderate income and internet, high density, poor air quality, moderate happiness, but good green space. | Income: $1,822<br>Happiness: 5.6<br>Air Quality: 76.0<br>Density: 4,037/km² |
+| 3 | 🌆 **Balanced Urban Centers** | Medium income, good internet, moderate density, decent air, high happiness, and reasonable green space. A balanced lifestyle. | Income: $3,436<br>Happiness: 7.9<br>Air Quality: 58.5<br>Internet: 83.2% |
+| 4 | 📉 **Developing Centers** | Low income, very low internet, low rent, poor air quality, low happiness, likely low green space. | Income: $882<br>Happiness: 4.1<br>Air Quality: 83.7<br>Internet: 44.8% |
+| 5 | 🏭 **Industrial Dense Cities** | Very high density, low income, poor air quality (worst), low happiness, moderate internet. Likely industrial hubs. | Income: $2,510<br>Happiness: 5.7<br>Air Quality: 94.1<br>Density: 7,451/km² |
+| -1 | ❓ **Noise / Outliers** | Cities that do not fit any clean archetype due to unusual combinations of features. | 7 cities flagged as noise. |
 
 ## 🗂️ Project Structure
 .
