@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import joblib
 import json
-import hdbscan  # <-- ADD THIS IMPORT
 from pathlib import Path
+from PIL import Image
 
 # --- PAGE CONFIG ---
 st.set_page_config(
@@ -20,21 +20,19 @@ st.markdown("**Cluster cities based on economic, environmental, and social indic
 ROOT_DIR = Path(__file__).parent.parent
 DATA_PATH = ROOT_DIR / "data" / "city_lifestyle_dataset.csv"
 MODEL_PATH = ROOT_DIR / "models" / "clustering_pipeline.pkl"
-UMAP_PATH = ROOT_DIR / "models" / "umap_reducer.pkl"
 FEATURES_PATH = ROOT_DIR / "models" / "feature_names.json"
 
 # --- LOAD MODELS ---
 @st.cache_resource
 def load_models():
     pipeline = joblib.load(MODEL_PATH)
-    umap_reducer = joblib.load(UMAP_PATH)
     with open(FEATURES_PATH, 'r') as f:
         feature_names = json.load(f)
-    return pipeline, umap_reducer, feature_names
+    return pipeline, feature_names
 
-pipeline, umap_reducer, feature_names = load_models()
+pipeline, feature_names = load_models()
 
-# --- IDENTIFY COLUMN TYPES ---
+# --- IDENTIFY FEATURES ---
 numeric_features = [
     'population_density', 'avg_income', 'internet_penetration',
     'avg_rent', 'air_quality_index', 'public_transport_score',
@@ -43,96 +41,58 @@ numeric_features = [
 country_dummies = [col for col in feature_names if col.startswith('country_')]
 country_names = [col.replace('country_', '') for col in country_dummies]
 
-# --- LOAD AND PREPROCESS DATA FOR VISUALIZATION ---
+# --- LOAD DATA ---
 @st.cache_data
-def load_and_preprocess_data():
+def load_data():
     df = pd.read_csv(DATA_PATH)
-    
-    # One-hot encode
-    df_encoded = pd.get_dummies(df, columns=['country'], drop_first=True)
-    X_raw = df_encoded.drop(['city_name'], axis=1)
-    
-    # Ensure ALL columns exist (fill missing dummies with 0)
-    for col in feature_names:
-        if col not in X_raw.columns:
-            X_raw[col] = 0
-    
-    # Reorder to match training
-    X_raw = X_raw[feature_names]
-    
-    # Scale using pipeline's scaler
-    X_scaled = pipeline.named_steps['scaler'].transform(X_raw)
-    
-    # Get cluster labels
-    labels = pipeline.named_steps['clusterer'].labels_
-    
-    # UMAP transform
-    X_umap = umap_reducer.transform(X_scaled)
-    
-    # Safety check: if UMAP output has more than 2 columns, take first 2
-    if X_umap.shape[1] != 2:
-        X_umap = X_umap[:, :2]
-    
-    return df, X_umap, labels
+    return df
 
-df, X_umap, labels = load_and_preprocess_data()
+df = load_data()
 
-# --- SECTION 1: VISUALIZE ---
-st.header("📊 Existing Cluster Visualization")
-
-# Create cluster names mapping
+# --- CLUSTER NAMES ---
 cluster_names_map = {
-    0: "💰 Wealthy Digital Hubs",
-    1: "🏙️ Dense Urban Metropolises",
-    2: "🌿 Eco-Haven Cities",
-    3: "📉 Developing Centers",
+    0: "🌿 Affluent Eco-Havens",
+    1: "🏡 High-Income Suburban",
+    2: "🏙️ Dense Urban Centers",
+    3: "🌆 Balanced Urban Centers",
+    4: "📉 Developing Centers",
+    5: "🏭 Industrial Dense Cities",
     -1: "❓ Noise / Outliers"
 }
-unique_labels = sorted(set(labels))
-for label in unique_labels:
-    if label == -1:
-        cluster_names_map[-1] = "Noise / Outliers"
-    else:
-        cluster_names_map[label] = f"Cluster {label}"
 
-import plotly.express as px
+# --- SECTION 1: VISUALIZATION (Static Image) ---
+st.header("📊 Existing Cluster Visualization")
 
-fig = px.scatter(
-    x=X_umap[:, 0],
-    y=X_umap[:, 1],
-    color=labels,
-    hover_data={'City': df['city_name'], 'Country': df['country']},
-    title="City Clusters (UMAP Projection)",
-    labels={'x': 'UMAP Dimension 1', 'y': 'UMAP Dimension 2'},
-    color_continuous_scale='viridis'
-)
-fig.update_traces(
-    hovertemplate="<b>%{customdata[0]}</b><br>Country: %{customdata[1]}<br>Cluster: %{marker.color}<extra></extra>"
-)
-st.plotly_chart(fig, use_container_width=True)
+img_path = Path(__file__).parent / "cluster_visualization.png"
+if img_path.exists():
+    st.image(str(img_path), use_container_width=True)
+    st.caption("UMAP projection of cities, color-coded by cluster")
+else:
+    st.warning("Visualization image not found. Please run the notebook to generate it.")
 
-# --- SECTION 2: PREDICT NEW INPUT ---
+# --- SECTION 2: SINGLE PREDICTION ---
 st.header("🔮 Predict Cluster for New City")
-st.markdown("Enter city characteristics and select a country:")
+st.markdown("Enter city characteristics below to see which lifestyle cluster it belongs to:")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    avg_income = st.slider("Average Income (USD)", 1000, 120000, 30000, step=1000)
-    avg_rent = st.slider("Average Monthly Rent (USD)", 100, 6000, 800, step=50)
-    air_quality_index = st.slider("Air Quality Index (lower = better)", 0, 150, 35, step=1)
-    population_density = st.slider("Population Density (per km²)", 50, 25000, 3000, step=100)
+    st.subheader("Economic & Environmental")
+    avg_income = st.slider("💰 Average Income (USD)", 500, 120000, 30000, step=500)
+    avg_rent = st.slider("🏠 Average Monthly Rent (USD)", 50, 6000, 800, step=50)
+    air_quality_index = st.slider("🌫️ Air Quality Index (lower = better)", 0, 150, 35, step=1)
+    population_density = st.slider("👥 Population Density (per km²)", 10, 25000, 3000, step=100)
 
 with col2:
-    internet_penetration = st.slider("Internet Penetration (%)", 0, 100, 65, step=1)
-    happiness_score = st.slider("Happiness Score", 0.0, 10.0, 6.5, step=0.1)
-    public_transport_score = st.slider("Public Transport Score", 0.0, 10.0, 6.0, step=0.1)
-    green_space_ratio = st.slider("Green Space Ratio (%)", 0, 60, 25, step=1)
+    st.subheader("Social & Infrastructure")
+    internet_penetration = st.slider("📶 Internet Penetration (%)", 0, 100, 83, step=1)
+    happiness_score = st.slider("😊 Happiness Score", 0.0, 10.0, 7.9, step=0.1)
+    public_transport_score = st.slider("🚌 Public Transport Score", 0, 100, 60, step=1)
+    green_space_ratio = st.slider("🌳 Green Space Ratio (%)", 0, 60, 33, step=1)
 
-selected_country = st.selectbox("Country", country_names if country_names else ["Unknown"])
+selected_country = st.selectbox("🌍 Country", country_names)
 
-if st.button("Predict Cluster", type="primary"):
-    # Build input vector
+if st.button("🚀 Predict Cluster", type="primary"):
     input_dict = {
         'population_density': population_density,
         'avg_income': avg_income,
@@ -143,52 +103,49 @@ if st.button("Predict Cluster", type="primary"):
         'happiness_score': happiness_score,
         'green_space_ratio': green_space_ratio
     }
-    # Add one-hot encoded country
     for country in country_names:
         input_dict[f'country_{country}'] = 1 if country == selected_country else 0
     
     input_df = pd.DataFrame([input_dict])[feature_names]
     
     try:
-        # Scale input
-        input_scaled = pipeline.named_steps['scaler'].transform(input_df)
-        
-        # Predict using approximate_predict
-        clusterer = pipeline.named_steps['clusterer']
-        cluster_label_arr, probabilities_arr = hdbscan.approximate_predict(clusterer, input_scaled)
-        
-        # Extract scalar values
-        cluster_label = cluster_label_arr[0]
-        prob = probabilities_arr[0]
-        
-        # Get cluster name
+        cluster_label = pipeline.predict(input_df)[0]
         cluster_name = cluster_names_map.get(cluster_label, f"Cluster {cluster_label}")
         
         if cluster_label == -1:
-            st.warning("⚠️ This city is classified as **noise/outlier**")
+            st.warning("⚠️ This city is classified as **Noise / Outlier** – it doesn't fit neatly into any lifestyle archetype.")
         else:
             st.success(f"✅ This city belongs to: **{cluster_name}**")
-            st.info(f"**Prediction confidence:** {prob:.2f}")
             
-            # Show cluster profile
+            # Get cluster profile from cached df
+            # First, assign clusters to df for profiling
             if 'cluster' not in df.columns:
-                df['cluster'] = labels
+                # Get labels for all data
+                df_encoded = pd.get_dummies(df, columns=['country'], drop_first=True)
+                X_full = df_encoded.drop(['city_name'], axis=1)
+                X_full = X_full[feature_names]
+                df['cluster'] = pipeline.predict(X_full)
             
             cluster_profile = df[df['cluster'] == cluster_label][numeric_features].mean()
             
-            st.subheader("📋 Cluster Profile")
+            st.subheader("📋 Cluster Profile (Average Values)")
             col_a, col_b, col_c = st.columns(3)
             with col_a:
                 st.metric("Avg Income", f"${cluster_profile['avg_income']:,.0f}")
                 st.metric("Avg Rent", f"${cluster_profile['avg_rent']:,.0f}")
             with col_b:
                 st.metric("Air Quality", f"{cluster_profile['air_quality_index']:.1f}")
-                st.metric("Density", f"{cluster_profile['population_density']:,.0f}")
+                st.metric("Population Density", f"{cluster_profile['population_density']:,.0f}")
             with col_c:
-                st.metric("Internet", f"{cluster_profile['internet_penetration']:.0f}%")
-                st.metric("Happiness", f"{cluster_profile['happiness_score']:.1f}")
+                st.metric("Internet Penetration", f"{cluster_profile['internet_penetration']:.0f}%")
+                st.metric("Happiness Score", f"{cluster_profile['happiness_score']:.1f}")
+            
+            st.subheader("🏙️ Cities in this cluster")
+            cities = df[df['cluster'] == cluster_label]['city_name'].tolist()
+            st.write(", ".join(cities[:10]) + ("..." if len(cities) > 10 else ""))
+            
     except Exception as e:
-        st.error(f"Prediction error: {e}")
+        st.error(f"Error: {e}")
 
 # --- SECTION 3: BATCH UPLOAD ---
 st.header("📤 Upload Batch File")
@@ -199,32 +156,34 @@ if uploaded_file is not None:
     batch_df = pd.read_csv(uploaded_file)
     st.write("Preview:", batch_df.head())
     
-    if st.button("Process Batch"):
+    if st.button("📊 Process Batch"):
         try:
             batch_encoded = pd.get_dummies(batch_df, columns=['country'], drop_first=True)
             for col in country_dummies:
                 if col not in batch_encoded.columns:
                     batch_encoded[col] = 0
-            X_batch = batch_encoded.drop(['city_name'], axis=1) if 'city_name' in batch_encoded.columns else batch_encoded
+            X_batch = batch_encoded.drop(['city_name'], axis=1) if 'city_name' in batch_encoded else batch_encoded
             X_batch = X_batch[feature_names]
             
-            # Scale
-            X_batch_scaled = pipeline.named_steps['scaler'].transform(X_batch)
+            predictions = pipeline.predict(X_batch)
             
-            # Predict using approximate_predict for all points
-            clusterer = pipeline.named_steps['clusterer']
-            labels_batch, probs = hdbscan.approximate_predict(clusterer, X_batch_scaled)
-            
-            batch_df['predicted_cluster'] = labels_batch
+            batch_df['predicted_cluster'] = predictions
             batch_df['cluster_name'] = batch_df['predicted_cluster'].map(cluster_names_map)
             
-            st.success("Batch processing complete!")
-            st.dataframe(batch_df)
+            st.success("✅ Batch processing complete!")
+            st.dataframe(batch_df[['city_name', 'predicted_cluster', 'cluster_name']])
             
             csv = batch_df.to_csv(index=False)
-            st.download_button("📥 Download Results", csv, "cluster_predictions.csv", "text/csv")
+            st.download_button(
+                label="📥 Download Results CSV",
+                data=csv,
+                file_name="cluster_predictions.csv",
+                mime="text/csv"
+            )
         except Exception as e:
-            st.error(f"Batch error: {e}")
+            st.error(f"Error: {e}")
 
 st.markdown("---")
-st.caption("Built with Streamlit • HDBSCAN • UMAP")
+st.caption("Built with Streamlit • Clustering model: DBSCAN + KNN • Visualization: UMAP (static)")
+
+        
