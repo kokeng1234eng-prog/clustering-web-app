@@ -4,7 +4,6 @@ scikit-learn
 scipy
 matplotlib
 seaborn
-umap-learn
 streamlit
 plotly
 joblib
